@@ -49,10 +49,10 @@ http://localhost:8000/docs
 | GET | / | API information |
 | GET | /health | Health check |
 | GET | /tasks | Get all tasks |
-| GET | /tasks/{id} | Get one task |
+| GET | /tasks/{task_id} | Get one task |
 | POST | /tasks | Create task |
-| PUT | /tasks/{id} | Update task |
-| DELETE | /tasks/{id} | Delete task |
+| PUT | /tasks/{task_id} | Update task |
+| DELETE | /tasks/{task_id} | Delete task |
 
 ## Status Codes
 
@@ -69,4 +69,6 @@ Data resets when the server restarts.
 
 ## Screenshots
 
-Add your Swagger UI screenshots here.
+### Swagger UI Documentation
+
+![Swagger UI](screenshots/swagger-ui.png)
