@@ -1,4 +1,4 @@
-
+from database import init_db
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
@@ -9,6 +9,9 @@ app = FastAPI(
     description="A simple CRUD API built for FlyRank Internship BE-01",
     version="1.0"
 )
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 # In-memory storage with 3 sample tasks
 tasks = [
