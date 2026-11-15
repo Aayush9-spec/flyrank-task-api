@@ -15,7 +15,7 @@ for the FlyRank Backend AI Engineering Internship.
 
 Clone the repository:
 
-git clone https://github.com/YOUR_USERNAME/flyrank-task-api.git
+git clone https://github.com/Aayush9-spec/flyrank-task-api.git
 
 Navigate to the project:
 
