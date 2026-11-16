@@ -104,3 +104,47 @@ def create_task(title: str):
         }
     finally:
         conn.close()
+
+
+def update_task(task_id: int, updates: dict):
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        row = conn.execute(
+            "SELECT * FROM tasks WHERE id = ?",
+            (task_id,)
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        current_title, current_done = row[1], bool(row[2])
+
+        new_title = updates.get("title", current_title)
+        new_done = updates.get("done", current_done)
+
+        conn.execute(
+            "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+            (new_title, int(new_done), task_id)
+        )
+        conn.commit()
+
+        return {
+            "id": task_id,
+            "title": new_title,
+            "done": new_done
+        }
+    finally:
+        conn.close()
+
+
+def delete_task(task_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.execute(
+            "DELETE FROM tasks WHERE id = ?",
+            (task_id,)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
