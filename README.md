@@ -91,7 +91,7 @@ Manual database updates and deletions were also tested. The API reflects the cha
 
 ### Database Screenshots
 
-Add your DB Browser screenshots to the `screenshots/` directory and reference them here:
+The following screenshots demonstrate the SQLite database inspection and SQL query execution using DB Browser for SQLite.
 
 ![SQLite tasks table](screenshots/sqlite-tasks.png)
 
