@@ -86,7 +86,6 @@ SELECT * FROM tasks;
 SELECT * FROM tasks WHERE done = 1;
 SELECT COUNT(*) FROM tasks;
 ```
-
 Manual database updates and deletions were also tested. The API reflects the changes made directly in SQLite.
 
 ### Database Screenshots
