@@ -62,10 +62,40 @@ http://localhost:8000/docs
 - 400: Invalid input
 - 404: Task not found
 
-## Storage
+## Database Storage
 
-Tasks are stored in an in-memory Python list.
-Data resets when the server restarts.
+This project uses **SQLite** to persist task data.
+
+- Database: `tasks.db`
+- Database library: Python's built-in `sqlite3`
+- Table: `tasks`
+- The database and table are created automatically when the application starts.
+- Three sample tasks are inserted only when the table is empty.
+- Task data persists across server restarts.
+
+The database file is created in the project directory and is excluded from Git using `.gitignore`.
+
+## Database Verification
+
+The database was inspected using DB Browser for SQLite.
+
+The following SQL queries were executed:
+
+```sql
+SELECT * FROM tasks;
+SELECT * FROM tasks WHERE done = 1;
+SELECT COUNT(*) FROM tasks;
+```
+
+Manual database updates and deletions were also tested. The API reflects the changes made directly in SQLite.
+
+### Database Screenshots
+
+Add your DB Browser screenshots to the `screenshots/` directory and reference them here:
+
+![SQLite tasks table](screenshots/sqlite-tasks.png)
+
+![SQLite query results](screenshots/sqlite-query-results.png)
 
 ## Screenshots
 
