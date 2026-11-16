@@ -1,4 +1,4 @@
-from database import init_db, get_all_tasks, get_task_by_id
+from database import init_db, get_all_tasks, get_task_by_id, create_task
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
@@ -72,31 +72,19 @@ def get_task(task_id: int):
 
 # Stage 3: Create a task
 @app.post("/tasks", status_code=201)
-def create_task(data: dict[str, Any] = Body(...)):
-    title = data.get("title")
-
-    if not isinstance(title, str) or not title.strip():
+def create_new_task(payload: dict = Body(...)):
+    if (
+        not isinstance(payload, dict)
+        or set(payload.keys()) != {"title"}
+        or not isinstance(payload["title"], str)
+        or not payload["title"].strip()
+    ):
         return JSONResponse(
             status_code=400,
-            content={"error": "Title is required and cannot be empty"}
+            content={"error": "Invalid request body"}
         )
 
-    if set(data.keys()) != {"title"}:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Only title is allowed"}
-        )
-
-    new_id = max((task["id"] for task in tasks), default=0) + 1
-
-    new_task = {
-        "id": new_id,
-        "title": title.strip(),
-        "done": False
-    }
-
-    tasks.append(new_task)
-    return new_task
+    return create_task(payload["title"].strip())
 
 
 # Stage 4: Update a task

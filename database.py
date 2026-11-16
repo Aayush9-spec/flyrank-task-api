@@ -84,3 +84,23 @@ def get_task_by_id(task_id: int):
 
     finally:
         conn.close()
+
+
+def create_task(title: str):
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.execute(
+            "INSERT INTO tasks (title, done) VALUES (?, ?)",
+            (title, 0)
+        )
+        conn.commit()
+
+        task_id = cursor.lastrowid
+
+        return {
+            "id": task_id,
+            "title": title,
+            "done": False
+        }
+    finally:
+        conn.close()
