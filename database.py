@@ -39,3 +39,48 @@ def init_db():
 
     finally:
         conn.close()
+
+
+def get_all_tasks():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        rows = conn.execute(
+            "SELECT * FROM tasks"
+        ).fetchall()
+
+        return [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "done": bool(row["done"])
+            }
+            for row in rows
+        ]
+
+    finally:
+        conn.close()
+
+
+def get_task_by_id(task_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        row = conn.execute(
+            "SELECT * FROM tasks WHERE id = ?",
+            (task_id,)
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "id": row["id"],
+            "title": row["title"],
+            "done": bool(row["done"])
+        }
+
+    finally:
+        conn.close()
