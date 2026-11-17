@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .DS_Store
 tasks.db
+.env
+database_sqlite_backup.py
+*.sqbpro

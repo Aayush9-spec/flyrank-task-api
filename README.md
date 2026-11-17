@@ -64,37 +64,32 @@ http://localhost:8000/docs
 
 ## Database Storage
 
-This project uses **SQLite** to persist task data.
+This project uses **PostgreSQL 16** to persist task data.
 
-- Database: `tasks.db`
-- Database library: Python's built-in `sqlite3`
-- Table: `tasks`
-- The database and table are created automatically when the application starts.
-- Three sample tasks are inserted only when the table is empty.
-- Task data persists across server restarts.
+- Database: `flyrank_tasks`
+- Database user: `flyrank`
+- Database table: `tasks`
+- Database driver: `psycopg`
+- Schema: `sql/init.sql`
+- Connection configuration: `DATABASE_URL`
 
-The database file is created in the project directory and is excluded from Git using `.gitignore`.
+PostgreSQL runs in Docker using Docker Compose. Docker volumes preserve database files across container restarts.
 
-## Database Verification
+### Database Verification
 
-The database was inspected using DB Browser for SQLite.
+Connect to PostgreSQL:
 
-The following SQL queries were executed:
+`docker compose exec db psql -U flyrank -d flyrank_tasks`
 
-```sql
-SELECT * FROM tasks;
-SELECT * FROM tasks WHERE done = 1;
-SELECT COUNT(*) FROM tasks;
-```
-Manual database updates and deletions were also tested. The API reflects the changes made directly in SQLite.
+Example queries:
 
-### Database Screenshots
+`SELECT * FROM tasks;`
 
-The following screenshots demonstrate the SQLite database inspection and SQL query execution using DB Browser for SQLite.
+`SELECT COUNT(*) FROM tasks;`
 
-![SQLite tasks table](screenshots/sqlite-tasks.png)
+### Persistence Verification
 
-![SQLite query results](screenshots/sqlite-query-results.png)
+A task was created through the FastAPI API and verified directly in PostgreSQL. Both Docker containers were restarted, and the task remained available afterward, confirming database persistence.
 
 ## Screenshots
 

@@ -1,75 +1,53 @@
-import sqlite3
-from pathlib import Path
 
-# Store the database beside this Python file
-DB_PATH = Path(__file__).resolve().parent / "tasks.db"
+import os
+
+import psycopg
+from psycopg.rows import dict_row
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+def get_connection():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
+
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-
-    try:
-        # Create the tasks table if it does not exist
+    with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
-                done BOOLEAN NOT NULL DEFAULT 0
+                done BOOLEAN NOT NULL DEFAULT FALSE
             )
         """)
 
-        # Insert sample tasks only when the table is empty
-        count = conn.execute(
-            "SELECT COUNT(*) FROM tasks"
-        ).fetchone()[0]
-
-        if count == 0:
-            sample_tasks = [
-                ("Learn Python", 1),
-                ("Learn FastAPI", 0),
-                ("Build CRUD API", 0)
-            ]
-
-            conn.executemany(
-                "INSERT INTO tasks (title, done) VALUES (?, ?)",
-                sample_tasks
-            )
-
-        conn.commit()
-
-    finally:
-        conn.close()
-
 
 def get_all_tasks():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-
-    try:
+    with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM tasks"
+            "SELECT id, title, done FROM tasks ORDER BY id"
         ).fetchall()
 
         return [
             {
                 "id": row["id"],
                 "title": row["title"],
-                "done": bool(row["done"])
+                "done": row["done"]
             }
             for row in rows
         ]
 
-    finally:
-        conn.close()
-
 
 def get_task_by_id(task_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-
-    try:
+    with get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?",
+            "SELECT id, title, done FROM tasks WHERE id = %s",
             (task_id,)
         ).fetchone()
 
@@ -79,72 +57,63 @@ def get_task_by_id(task_id: int):
         return {
             "id": row["id"],
             "title": row["title"],
-            "done": bool(row["done"])
+            "done": row["done"]
         }
-
-    finally:
-        conn.close()
 
 
 def create_task(title: str):
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        cursor = conn.execute(
-            "INSERT INTO tasks (title, done) VALUES (?, ?)",
-            (title, 0)
-        )
-        conn.commit()
-
-        task_id = cursor.lastrowid
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO tasks (title, done)
+            VALUES (%s, FALSE)
+            RETURNING id, title, done
+            """,
+            (title,)
+        ).fetchone()
 
         return {
-            "id": task_id,
-            "title": title,
-            "done": False
+            "id": row["id"],
+            "title": row["title"],
+            "done": row["done"]
         }
-    finally:
-        conn.close()
 
 
 def update_task(task_id: int, updates: dict):
-    conn = sqlite3.connect(DB_PATH)
-    try:
+    with get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM tasks WHERE id = ?",
+            "SELECT id, title, done FROM tasks WHERE id = %s",
             (task_id,)
         ).fetchone()
 
         if row is None:
             return None
 
-        current_title, current_done = row[1], bool(row[2])
+        new_title = updates.get("title", row["title"])
+        new_done = updates.get("done", row["done"])
 
-        new_title = updates.get("title", current_title)
-        new_done = updates.get("done", current_done)
-
-        conn.execute(
-            "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
-            (new_title, int(new_done), task_id)
-        )
-        conn.commit()
+        updated = conn.execute(
+            """
+            UPDATE tasks
+            SET title = %s, done = %s
+            WHERE id = %s
+            RETURNING id, title, done
+            """,
+            (new_title, new_done, task_id)
+        ).fetchone()
 
         return {
-            "id": task_id,
-            "title": new_title,
-            "done": new_done
+            "id": updated["id"],
+            "title": updated["title"],
+            "done": updated["done"]
         }
-    finally:
-        conn.close()
 
 
 def delete_task(task_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    try:
+    with get_connection() as conn:
         cursor = conn.execute(
-            "DELETE FROM tasks WHERE id = ?",
+            "DELETE FROM tasks WHERE id = %s",
             (task_id,)
         )
-        conn.commit()
+
         return cursor.rowcount > 0
-    finally:
-        conn.close()

@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.git/
+.env
+tasks.db
+database_sqlite_backup.py
