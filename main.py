@@ -11,12 +11,15 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from typing import Any
 from supabase_client import check_supabase_connection
+from auth_routes import router as auth_router
 
 app = FastAPI(
     title="Task Management API",
     description="A simple CRUD API built for FlyRank Internship BE-01",
     version="1.0"
 )
+
+app.include_router(auth_router)
 
 
 @app.on_event("startup")
