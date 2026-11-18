@@ -20,6 +20,8 @@ services:
 
   app:
     build: .
+    env_file:
+      - .env
     container_name: flyrank-api
     ports:
       - "8000:8000"

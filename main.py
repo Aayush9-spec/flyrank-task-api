@@ -10,6 +10,7 @@ from fastapi import FastAPI, Body, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from typing import Any
+from supabase_client import check_supabase_connection
 
 app = FastAPI(
     title="Task Management API",
@@ -17,9 +18,12 @@ app = FastAPI(
     version="1.0"
 )
 
+
 @app.on_event("startup")
 def startup_event():
     init_db()
+    check_supabase_connection()
+    print("Server running and connected to Supabase")
 
 
 
