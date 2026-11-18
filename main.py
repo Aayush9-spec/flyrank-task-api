@@ -10,6 +10,7 @@ from fastapi import FastAPI, Body, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from typing import Any
+from auth_dependency import AuthenticationError
 from supabase_client import check_supabase_connection
 from auth_routes import router as auth_router
 from protected_routes import router as protected_router
@@ -34,6 +35,17 @@ def startup_event():
 
 
 
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_error_handler(
+    request: Request,
+    exc: AuthenticationError
+):
+    return JSONResponse(
+        status_code=401,
+        content={"error": exc.message}
+    )
 
 # Return 400 for invalid request bodies
 @app.exception_handler(RequestValidationError)

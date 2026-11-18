@@ -1,22 +1,9 @@
-from fastapi import APIRouter, Header
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends
 
-from supabase_client import supabase
+from auth_dependency import AuthContext, get_current_auth
 
 
 router = APIRouter(tags=["Access Control"])
-
-
-def parse_bearer_token(authorization: str | None) -> str | None:
-    if not authorization:
-        return None
-
-    parts = authorization.split()
-
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        return None
-
-    return parts[1]
 
 
 @router.get("/public/info")
@@ -29,30 +16,9 @@ def public_info():
 
 @router.get("/protected/profile")
 def protected_profile(
-    authorization: str | None = Header(default=None)
+    auth: AuthContext = Depends(get_current_auth)
 ):
-    token = parse_bearer_token(authorization)
-
-    if token is None:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Access token required"}
-        )
-
-    try:
-        # Verify the JWT with Supabase Auth.
-        response = supabase.auth.get_user(token)
-        user = response.user
-
-        if user is None:
-            raise ValueError("No user returned by Supabase")
-
-    except Exception:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Invalid or expired token"}
-        )
-
+    user = auth.user
     created_at = user.created_at
 
     if hasattr(created_at, "isoformat"):
@@ -62,4 +28,15 @@ def protected_profile(
         "user_id": user.id,
         "email": user.email,
         "created_at": created_at
+    }
+
+
+@router.get("/protected/dashboard")
+def protected_dashboard(
+    auth: AuthContext = Depends(get_current_auth)
+):
+    return {
+        "message": "Welcome to the protected dashboard",
+        "user_id": auth.user.id,
+        "email": auth.user.email
     }

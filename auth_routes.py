@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from supabase import create_client
 
 from supabase_client import SUPABASE_URL, SUPABASE_KEY
+from auth_dependency import AuthContext, get_current_auth
 
 
 router = APIRouter(
@@ -17,8 +19,7 @@ class AuthCredentials(BaseModel):
 
 
 def get_auth_client():
-    # A separate client prevents one user's session from
-    # being shared with another authentication request.
+    # Use a separate client for each authentication request.
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
@@ -92,3 +93,28 @@ def login(credentials: AuthCredentials):
         "refresh_token": response.session.refresh_token,
         "token_type": "bearer"
     }
+
+
+@router.post("/logout", status_code=204)
+def logout(
+    auth: AuthContext = Depends(get_current_auth)
+):
+    try:
+        # Restore the verified bearer token as a local SDK session.
+        # The access token is still valid because the dependency
+        # has already verified it with Supabase.
+        auth.auth_client.auth.set_session(
+            auth.access_token,
+            ""
+        )
+
+        # Sign out only this session, not other devices.
+        auth.auth_client.auth.sign_out({"scope": "local"})
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Supabase logout failed"
+        ) from exc
+
+    return Response(status_code=204)
