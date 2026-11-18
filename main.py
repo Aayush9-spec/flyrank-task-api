@@ -12,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from typing import Any
 from supabase_client import check_supabase_connection
 from auth_routes import router as auth_router
+from protected_routes import router as protected_router
 
 app = FastAPI(
     title="Task Management API",
@@ -20,6 +21,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(protected_router)
 
 
 @app.on_event("startup")
