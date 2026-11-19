@@ -1,0 +1,17 @@
+{
+  "started_at": "2026-11-19T13:32:39.531871+00:00",
+  "duration_seconds": 1.4,
+  "catalogue_books": 61,
+  "pages_fetched": 0,
+  "request_attempts": 1,
+  "cache_hits": 60,
+  "valid_records": 60,
+  "invalid_records": 1,
+  "failed_pages": [
+    {
+      "title": "Intentional Failure Test",
+      "product_url": "https://books.toscrape.com/catalogue/this-page-does-not-exist-404-test.html",
+      "reason": "HTTPError: 404 Client Error: Not Found for url: https://books.toscrape.com/catalogue/this-page-does-not-exist-404-test.html"
+    }
+  ]
+}
