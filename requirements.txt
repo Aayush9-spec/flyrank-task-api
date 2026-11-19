@@ -4,3 +4,5 @@ psycopg[binary]
 python-dotenv
 
 supabase==2.34.1
+
+openai==3.55.1
