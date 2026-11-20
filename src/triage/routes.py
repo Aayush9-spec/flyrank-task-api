@@ -1,5 +1,8 @@
+
 import json
 import os
+import re
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
@@ -13,7 +16,10 @@ load_dotenv()
 
 router = APIRouter()
 
-PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "triage-v1.md"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+PROMPT_PATH = ROOT_DIR / "prompts" / "triage-v1.md"
+QUARANTINE_PATH = ROOT_DIR / "logs" / "quarantine.jsonl"
+PROMPT_VERSION = "triage-v1"
 
 
 class Category(str, Enum):
@@ -40,6 +46,64 @@ class TriageResponse(BaseModel):
     reason: str = Field(min_length=1)
 
 
+def extract_json(text: str) -> str:
+    """Extract a JSON object from plain text or a Markdown code fence."""
+    cleaned = text.strip()
+
+    cleaned = re.sub(
+        r"^```(?:json)?\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("No JSON object found in model response.")
+
+    return cleaned[start:end + 1]
+
+
+def parse_and_validate(raw_output: str) -> TriageResponse:
+    """Parse model output and validate it against the response schema."""
+    json_text = extract_json(raw_output)
+    parsed = json.loads(json_text)
+    return TriageResponse.model_validate(parsed)
+
+
+def quarantine(
+    ticket_text: str,
+    raw_output: str,
+    error: str,
+) -> None:
+    """Store failed model output for later inspection."""
+    QUARANTINE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "prompt_version": PROMPT_VERSION,
+        "input": ticket_text,
+        "raw_output": raw_output,
+        "error": error,
+    }
+
+    with QUARANTINE_PATH.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def get_validation_error(raw_output: str) -> str:
+    """Return a readable parsing or schema-validation error."""
+    try:
+        parse_and_validate(raw_output)
+    except (ValueError, json.JSONDecodeError, ValidationError) as exc:
+        return str(exc)
+
+    return "Unknown validation error."
+
+
 @router.post("/triage", response_model=TriageResponse)
 def triage_ticket(payload: TriageRequest):
     if os.getenv("LLM_STUB") == "1":
@@ -47,7 +111,7 @@ def triage_ticket(payload: TriageRequest):
             category=Category.other,
             urgency=Urgency.normal,
             confidence=0.75,
-            reason="Stub response for endpoint validation."
+            reason="Stub response for endpoint validation.",
         )
 
     base_url = os.getenv("LLM_BASE_URL")
@@ -57,7 +121,7 @@ def triage_ticket(payload: TriageRequest):
     if not all([base_url, api_key, model]):
         raise HTTPException(
             status_code=503,
-            detail="AI provider configuration is incomplete."
+            detail="AI provider configuration is incomplete.",
         )
 
     try:
@@ -79,22 +143,62 @@ def triage_ticket(payload: TriageRequest):
             temperature=0.1,
         )
 
-        content = response.choices[0].message.content
+        raw_output = response.choices[0].message.content or ""
 
-        if not content:
-            raise ValueError("The AI provider returned an empty response.")
+        try:
+            return parse_and_validate(raw_output)
 
-        result = json.loads(content)
-        return TriageResponse.model_validate(result)
+        except (ValueError, json.JSONDecodeError, ValidationError) as first_error:
+            validation_error = str(first_error)
 
-    except (json.JSONDecodeError, ValidationError, ValueError) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="The AI provider returned an invalid triage response."
-        ) from exc
+            repair_response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous response was invalid.\n"
+                            "Return exactly one corrected JSON object matching "
+                            "the required schema. Do not add explanations.\n\n"
+                            f"Original ticket:\n{payload.text}\n\n"
+                            f"Invalid response:\n{raw_output}\n\n"
+                            f"Validation error:\n{validation_error}"
+                        ),
+                    },
+                ],
+                temperature=0.0,
+            )
+
+            repaired_output = (
+                repair_response.choices[0].message.content or ""
+            )
+
+            try:
+                return parse_and_validate(repaired_output)
+
+            except (ValueError, json.JSONDecodeError, ValidationError) as second_error:
+                quarantine(
+                    ticket_text=payload.text,
+                    raw_output=(
+                        "FIRST RESPONSE:\n"
+                        f"{raw_output}\n\n"
+                        "REPAIR RESPONSE:\n"
+                        f"{repaired_output}"
+                    ),
+                    error=str(second_error),
+                )
+
+                raise HTTPException(
+                    status_code=422,
+                    detail="The AI could not produce a valid triage response.",
+                ) from second_error
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         raise HTTPException(
             status_code=502,
-            detail="The AI provider request failed."
+            detail="The AI provider request failed.",
         ) from exc
