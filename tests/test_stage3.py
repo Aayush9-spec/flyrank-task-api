@@ -108,7 +108,7 @@ class Stage3Tests(unittest.TestCase):
             self.quarantine.read_text(encoding="utf-8").strip()
         )
 
-        self.assertEqual(record["prompt_version"], "triage-v1")
+        self.assertEqual(record["prompt_version"], "triage-v2")
         self.assertIn("Invalid first response", record["raw_output"])
         self.assertIn("Invalid repair response", record["raw_output"])
         self.assertEqual(create_mock.call_count, 2)

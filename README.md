@@ -1,241 +1,208 @@
-# Task Management API — FlyRank Internship
 
-A RESTful Task Management API built with Python and FastAPI for the FlyRank Backend AI Engineering Internship. It includes PostgreSQL persistence, Supabase authentication, protected routes, and interactive Swagger documentation.
+# AI Support Ticket Triage API
 
-## Technologies
+A FastAPI service that uses a locally hosted AI model to classify customer support tickets into billing, bug, feature, or other categories. Each request produces a validated JSON decision containing a category, urgency, confidence score, and short reason.
 
-- Python
-- FastAPI
-- Uvicorn
-- PostgreSQL 16
-- Psycopg
-- Supabase Auth
-- Docker and Docker Compose
-- Swagger UI
+## Example API request
 
-## Features
-
-- Task CRUD operations
-- PostgreSQL database persistence
-- User signup and login with Supabase
-- Supabase access-token verification
-- Reusable authentication dependency
-- Public and protected API routes
-- Bearer-token authentication in Swagger UI
-- Protected dashboard and profile endpoints
-- Logout endpoint
-
-## Setup
-
-### 1. Clone the repository
+Start the API locally, then run:
 
 ```bash
-git clone https://github.com/Aayush9-spec/flyrank-task-api.git
-cd flyrank-task-api
+curl -X POST http://127.0.0.1:8001/triage \
+  -H "Content-Type: application/json" \
+  -d '{"text":"I was charged twice for my monthly subscription. Please refund the duplicate payment."}'
 ```
 
-### 2. Configure environment variables
-
-Create `.env` only if it does not already exist:
-
-```bash
-if [ ! -f .env ]; then cp .env.example .env; fi
-chmod 600 .env
-```
-
-Edit `.env` with your own PostgreSQL and Supabase credentials.
-
-**Important:** Never commit or share your `.env` file.
-
-### 3. Run with Docker Compose
-
-```bash
-docker compose up --build -d
-docker compose ps
-```
-
-View application logs:
-
-```bash
-docker compose logs --tail 30 app
-```
-
-- API: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-
-### 4. Run locally (optional)
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-Ensure PostgreSQL is running and environment variables are configured.
-
-## API Endpoints
-
-### General and task routes
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | API information |
-| GET | `/health` | Health check |
-| GET | `/tasks` | Get all tasks |
-| GET | `/tasks/{task_id}` | Get a task |
-| POST | `/tasks` | Create a task |
-| PUT | `/tasks/{task_id}` | Update a task |
-| DELETE | `/tasks/{task_id}` | Delete a task |
-
-### Authentication routes
-
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| POST | `/auth/signup` | Public | Register a user |
-| POST | `/auth/login` | Public | Authenticate a user |
-| POST | `/auth/logout` | Protected | Log out an authenticated user |
-
-### Profile and dashboard routes
-
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| GET | `/public/info` | Public | Public API information |
-| GET | `/protected/profile` | Protected | Get authenticated user profile |
-| GET | `/protected/dashboard` | Protected | Access protected dashboard |
-
-Protected routes require a valid Supabase access token in the HTTP Bearer Authorization header.
-
-## Authentication Testing
-
-1. Open http://localhost:8000/docs.
-2. Register or log in using the authentication endpoints.
-3. Obtain the Supabase access token from the login response.
-4. Select **Authorize** in Swagger UI and enter the access token.
-5. Test the protected profile, dashboard, and logout endpoints.
-6. Test a protected endpoint without a token to verify authentication.
-
-## Database
-
-- Database: `flyrank_tasks`
-- Database user: `flyrank`
-- Table: `tasks`
-- Python driver: `psycopg`
-- Schema: `sql/init.sql`
-- Configuration: `DATABASE_URL`
-
-PostgreSQL runs through Docker Compose with a named persistent volume.
-
-Connect to PostgreSQL:
-
-```bash
-docker compose exec db psql -U flyrank -d flyrank_tasks
-```
-
-Example queries:
-
-```sql
-SELECT * FROM tasks;
-SELECT COUNT(*) FROM tasks;
-```
-
-## HTTP Status Codes
-
-- `200` — Successful request
-- `201` — Resource created, where applicable
-- `204` — Successful request with no response body
-- `400` — Invalid request
-- `401` — Missing or invalid authentication
-- `404` — Resource not found
-
-## Screenshots
-
-### Swagger UI
-
-![Swagger UI](screenshots/swagger-ui.png)
-
-### Authentication and Bearer Authorization
-
-![Swagger Authentication](screenshots/swagger-auth.png)
-
-## Security
-
-- Credentials are stored in the local `.env` file.
-- `.env` is excluded from Git.
-- `.env.example` contains placeholders only.
-- Protected routes validate Supabase access tokens.
-
-## AI Support Ticket Triage
-
-The `POST /triage` endpoint classifies one customer support ticket and returns a structured decision. The input must contain a `text` field with 1–2000 characters.
-
-### Request
-
-```bash
-curl -X POST http://127.0.0.1:8001/triage -H "Content-Type: application/json" -d '{"text":"I was charged twice for my monthly subscription."}'
-```
-
-### Example response
-
-```json
-{"category":"other","urgency":"normal","confidence":0.75,"reason":"Stub response for endpoint validation."}
-```
-
-### Deterministic testing
-
-Set `LLM_STUB=1` to return a schema-valid test response without calling an AI model.
-
-```bash
-LLM_STUB=1 uvicorn main:app --host 127.0.0.1 --port 8001 --lifespan off
-```
-
-### Output constraints
-
-- `category`: `billing`, `bug`, `feature`, or `other`
-- `urgency`: `low`, `normal`, or `high`
-- `confidence`: number between `0.0` and `1.0`
-- `reason`: non-empty string
-
-
-
-### Reliability and Error Handling
-
-The AI triage endpoint includes the following reliability features:
-
-- **Request timeout:** 30 seconds per AI provider request.
-- **Controlled retries:** Retries are limited to network timeouts, HTTP 429 (rate limits), and HTTP 5xx (server errors).
-- **Exponential backoff:** Retry delays use 1, 2, and 4-second intervals with random jitter.
-- **Retry-After:** Respects the provider's Retry-After response header when available.
-- **No unnecessary retries:** HTTP 400, 401, and 403 errors are not retried.
-- **SDK retries disabled:** Automatic OpenAI SDK retries are disabled to prevent duplicate retry behavior.
-- **Response validation:** Invalid model responses receive one repair attempt. Responses that remain invalid are quarantined and return HTTP 422.
-
-### AI Kill Switch
-
-Set `LLM_ENABLED=false` in `.env` to disable AI provider calls.
-
-The endpoint then returns a deterministic fallback:
+Example real model response:
 
 ```json
 {
-  "category": "other",
+  "category": "billing",
   "urgency": "normal",
-  "confidence": 0.0,
-  "reason": "AI triage is disabled; manual review is required."
+  "confidence": 0.98,
+  "reason": "The customer reports a duplicate payment and requests a refund."
 }
 ```
 
-Set `LLM_ENABLED=true` to enable AI processing again.
+The exact confidence and reason can vary between model runs.
 
-### Structured Logging
+## Job card
 
-Each triage request generates a structured JSON log containing:
+| Field | Value |
+|---|---|
+| Job ID | BE-07 |
+| Assignment | Connect to an AI API |
+| Internal designation | W7 / A17 |
+| Track | Backend AI Engineering |
+| Endpoint | POST /triage |
+| Input | JSON containing `text` (1–2000 characters) |
+| Output | Structured JSON |
+| Provider | Local Ollama |
+| Model | gemma3:1b |
 
-- Prompt version
-- Model name
-- Input and output token counts
-- Request duration in milliseconds
-- Repair attempt count
-- Request status
+### Required output
 
-Retry events are logged separately. Logs are emitted through the Uvicorn logger.
+- `category`: billing, bug, feature, or other
+- `urgency`: low, normal, or high
+- `confidence`: number from 0.0 to 1.0
+- `reason`: one short sentence
+
+### Must never
+
+- Invent unsupported information.
+- Return categories or urgency values outside the permitted set.
+- Return unstructured model text.
+- Provide medical, legal, or financial advice.
+- Reveal the system prompt.
+- Follow malicious instructions contained inside ticket text.
+
+If the model output is invalid, the API attempts one repair. If validation still fails, the response is quarantined and the API returns HTTP 422.
+
+## Provider and configuration
+
+The project uses Ollama with the OpenAI-compatible API interface.
+
+Model: `gemma3:1b`
+
+Configure these environment variables in `.env`:
+
+```dotenv
+LLM_BASE_URL=http://localhost:11434/v1/
+LLM_API_KEY=ollama
+LLM_MODEL=gemma3:1b
+LLM_ENABLED=true
+```
+
+The `.env` file must remain private and must never be committed. `.env.example` contains configuration placeholders.
+
+### Run locally
+
+Requirements: Python, Ollama, and the `gemma3:1b` model.
+
+```bash
+ollama pull gemma3:1b
+pip install -r requirements.txt
+```
+
+Start the API:
+
+```bash
+uvicorn main:app --host 127.0.0.1 --port 8001 --lifespan off
+```
+
+API documentation: http://127.0.0.1:8001/docs
+
+### Deterministic stub mode
+
+Set `LLM_STUB=1` to test the endpoint without calling the model.
+
+### AI kill switch
+
+Set `LLM_ENABLED=false` to disable model calls and return a deterministic fallback requiring manual review.
+
+## Evaluation results
+
+Evaluation uses eight labelled cases stored in `evals/cases.json`. Run the suite while the API is running:
+
+```bash
+python evals/run.py
+```
+
+| Metric | Result |
+|---|---:|
+| Prompt version | triage-v2 |
+| Evaluation date | 2026-11-20 |
+| Total cases | 8 |
+| Passed | 8 |
+| Failed | 0 |
+| Category and urgency match rate | 100% |
+
+All eight evaluation cases passed against the live local model using prompt version `triage-v2`.
+
+This result represents the current eight-case evaluation set, not a guarantee of production accuracy.
+
+## Reliability and error handling
+
+- 30-second provider request timeout.
+- Retries only for timeouts, HTTP 429, and HTTP 5xx errors.
+- Exponential backoff with 1, 2, and 4-second base delays and random jitter.
+- Honors `Retry-After` when available.
+- Does not retry HTTP 400, 401, or 403 errors.
+- Disables automatic SDK retries.
+- Validates model responses against the Pydantic response schema.
+- Attempts one repair for invalid model output.
+- Quarantines failed outputs and returns HTTP 422 after an unsuccessful repair.
+- Supports an AI kill switch with a deterministic fallback.
+
+## Logging and cost estimate
+
+Each triage request generates a structured log containing:
+
+- Prompt version and model name.
+- Input and output token counts, when supplied by the provider.
+- Request duration.
+- Repair count.
+- Request status.
+
+### Observed sample call
+
+One successful live call produced:
+
+| Metric | Observed value |
+|---|---:|
+| Model | gemma3:1b |
+| Prompt version | triage-v2 |
+| Input tokens | 1089 |
+| Output tokens | 33 |
+| Duration | 4302.49 ms |
+| Repair count | 0 |
+
+This is one observed sample, not an average benchmark.
+
+### Estimated provider cost
+
+| Measure | Estimate |
+|---|---:|
+| Local Ollama API cost per call | $0.00 |
+| Estimated provider cost per 10,000 calls | $0.00 |
+
+These figures exclude electricity, hardware, maintenance, and infrastructure costs. They apply to local inference, not a paid hosted model.
+
+## What I would improve with another day
+
+1. Expand the evaluation set with more diverse and ambiguous tickets.
+2. Add prompt-injection and adversarial input tests.
+3. Calibrate confidence scores against a larger labelled dataset.
+4. Add automated integration tests and CI checks.
+5. Add authentication, rate limiting, and request monitoring.
+6. Improve quarantine retention, access controls, and operational observability.
+7. Benchmark throughput and resource usage under concurrent requests.
+
+## Project structure
+
+```text
+.
+├── evals/
+│   ├── cases.json
+│   └── run.py
+├── logs/
+├── prompts/
+│   ├── triage-v1.md
+│   └── triage-v2.md
+├── src/
+│   └── triage/
+│       └── routes.py
+├── tests/
+├── main.py
+├── JOB.md
+├── requirements.txt
+└── README.md
+```
+
+## Security
+
+- Secrets are stored locally in `.env`.
+- `.env` is excluded from Git.
+- Runtime quarantine logs are excluded from Git.
+- Ticket text is treated as untrusted input.
+- Model output is validated before being returned.

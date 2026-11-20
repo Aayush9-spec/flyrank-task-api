@@ -23,9 +23,9 @@ logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.INFO)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-PROMPT_PATH = ROOT_DIR / "prompts" / "triage-v1.md"
+PROMPT_PATH = ROOT_DIR / "prompts" / "triage-v2.md"
 QUARANTINE_PATH = ROOT_DIR / "logs" / "quarantine.jsonl"
-PROMPT_VERSION = "triage-v1"
+PROMPT_VERSION = "triage-v2"
 
 RETRY_DELAYS = (1, 2, 4)
 MAX_ATTEMPTS = len(RETRY_DELAYS) + 1
