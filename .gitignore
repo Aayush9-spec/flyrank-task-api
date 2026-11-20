@@ -6,3 +6,6 @@ tasks.db
 .env
 database_sqlite_backup.py
 *.sqbpro
+
+# Runtime logs and quarantined AI responses
+logs/*.jsonl

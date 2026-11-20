@@ -195,3 +195,47 @@ LLM_STUB=1 uvicorn main:app --host 127.0.0.1 --port 8001 --lifespan off
 - `urgency`: `low`, `normal`, or `high`
 - `confidence`: number between `0.0` and `1.0`
 - `reason`: non-empty string
+
+
+
+### Reliability and Error Handling
+
+The AI triage endpoint includes the following reliability features:
+
+- **Request timeout:** 30 seconds per AI provider request.
+- **Controlled retries:** Retries are limited to network timeouts, HTTP 429 (rate limits), and HTTP 5xx (server errors).
+- **Exponential backoff:** Retry delays use 1, 2, and 4-second intervals with random jitter.
+- **Retry-After:** Respects the provider's Retry-After response header when available.
+- **No unnecessary retries:** HTTP 400, 401, and 403 errors are not retried.
+- **SDK retries disabled:** Automatic OpenAI SDK retries are disabled to prevent duplicate retry behavior.
+- **Response validation:** Invalid model responses receive one repair attempt. Responses that remain invalid are quarantined and return HTTP 422.
+
+### AI Kill Switch
+
+Set `LLM_ENABLED=false` in `.env` to disable AI provider calls.
+
+The endpoint then returns a deterministic fallback:
+
+```json
+{
+  "category": "other",
+  "urgency": "normal",
+  "confidence": 0.0,
+  "reason": "AI triage is disabled; manual review is required."
+}
+```
+
+Set `LLM_ENABLED=true` to enable AI processing again.
+
+### Structured Logging
+
+Each triage request generates a structured JSON log containing:
+
+- Prompt version
+- Model name
+- Input and output token counts
+- Request duration in milliseconds
+- Repair attempt count
+- Request status
+
+Retry events are logged separately. Logs are emitted through the Uvicorn logger.
