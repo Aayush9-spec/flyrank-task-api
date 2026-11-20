@@ -14,6 +14,7 @@ from auth_dependency import AuthenticationError
 from supabase_client import check_supabase_connection
 from auth_routes import router as auth_router
 from protected_routes import router as protected_router
+from src.triage.routes import router as triage_router
 
 app = FastAPI(
     title="Task Management API",
@@ -23,6 +24,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(protected_router)
+app.include_router(triage_router)
 
 
 @app.on_event("startup")
@@ -50,6 +52,20 @@ async def authentication_error_handler(
 # Return 400 for invalid request bodies
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
+    if request.url.path == "/triage":
+        fields = sorted({
+            str(error["loc"][-1])
+            for error in exc.errors()
+            if error.get("loc") and error["loc"][-1] != "body"
+        })
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Invalid request body or parameters",
+                "fields": fields or ["text"]
+            }
+        )
+
     return JSONResponse(
         status_code=400,
         content={"error": "Invalid request body or parameters"}

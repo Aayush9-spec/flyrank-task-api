@@ -164,3 +164,34 @@ SELECT COUNT(*) FROM tasks;
 - `.env` is excluded from Git.
 - `.env.example` contains placeholders only.
 - Protected routes validate Supabase access tokens.
+
+## AI Support Ticket Triage
+
+The `POST /triage` endpoint classifies one customer support ticket and returns a structured decision. The input must contain a `text` field with 1–2000 characters.
+
+### Request
+
+```bash
+curl -X POST http://127.0.0.1:8001/triage -H "Content-Type: application/json" -d '{"text":"I was charged twice for my monthly subscription."}'
+```
+
+### Example response
+
+```json
+{"category":"other","urgency":"normal","confidence":0.75,"reason":"Stub response for endpoint validation."}
+```
+
+### Deterministic testing
+
+Set `LLM_STUB=1` to return a schema-valid test response without calling an AI model.
+
+```bash
+LLM_STUB=1 uvicorn main:app --host 127.0.0.1 --port 8001 --lifespan off
+```
+
+### Output constraints
+
+- `category`: `billing`, `bug`, `feature`, or `other`
+- `urgency`: `low`, `normal`, or `high`
+- `confidence`: number between `0.0` and `1.0`
+- `reason`: non-empty string
