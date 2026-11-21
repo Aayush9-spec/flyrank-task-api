@@ -5,6 +5,11 @@ import os
 import random
 import re
 import time
+import uuid
+
+from fastapi import Header
+
+from src.triage.job_store import create_job, get_job, IdempotencyConflict
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from enum import Enum
@@ -311,3 +316,65 @@ def triage_ticket(payload: TriageRequest):
 
     finally:
         log_call(model, metrics, start_time, status)
+
+
+
+@router.post("/triage/jobs", status_code=202)
+def submit_triage_job(
+    payload: TriageRequest,
+    idempotency_key: str | None = Header(
+        default=None,
+        alias="Idempotency-Key",
+    ),
+):
+    """Submit a ticket for asynchronous triage."""
+
+    key = idempotency_key or str(uuid.uuid4())
+    key = key.strip()
+
+    if not key or len(key) > 255:
+        raise HTTPException(
+            status_code=400,
+            detail="Idempotency-Key must contain 1 to 255 characters.",
+        )
+
+    try:
+        job = create_job(payload.text, key)
+    except IdempotencyConflict as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+
+    job_id = str(job["id"])
+
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "status_url": f"/triage/jobs/{job_id}",
+    }
+
+
+@router.get("/triage/jobs/{job_id}")
+def get_triage_job(job_id: uuid.UUID):
+    """Retrieve asynchronous triage job status and result."""
+
+    job = get_job(str(job_id))
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Triage job not found.",
+        )
+
+    return {
+        "job_id": str(job["id"]),
+        "status": job["status"],
+        "result": job["result"],
+        "error": job["error"],
+        "attempts": job["attempts"],
+        "max_attempts": job["max_attempts"],
+        "created_at": job["created_at"],
+        "updated_at": job["updated_at"],
+        "completed_at": job["completed_at"],
+    }

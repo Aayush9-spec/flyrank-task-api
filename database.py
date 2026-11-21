@@ -27,6 +27,33 @@ def init_db():
             )
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS triage_jobs (
+                id UUID PRIMARY KEY,
+                idempotency_key TEXT UNIQUE NOT NULL,
+                input_text TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN (
+                        'pending', 'processing', 'completed', 'failed'
+                    )),
+                result JSONB,
+                error TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 3,
+                available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                locked_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                completed_at TIMESTAMPTZ
+            )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_triage_jobs_pending
+            ON triage_jobs (available_at, created_at)
+            WHERE status = 'pending'
+        """)
+
 
 def get_all_tasks():
     with get_connection() as conn:
