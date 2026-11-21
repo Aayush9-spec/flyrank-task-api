@@ -9,3 +9,8 @@ database_sqlite_backup.py
 
 # Runtime logs and quarantined AI responses
 logs/*.jsonl
+
+# BE-08 PDF report generator runtime files
+pdf-report-generator/report.db
+pdf-report-generator/output/
+pdf-report-generator/artifacts/

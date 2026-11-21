@@ -6,3 +6,4 @@ python-dotenv
 supabase==2.34.1
 
 openai==3.55.1
+playwright==1.65.2

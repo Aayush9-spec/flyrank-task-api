@@ -14,6 +14,7 @@ from auth_dependency import AuthenticationError
 from supabase_client import check_supabase_connection
 from auth_routes import router as auth_router
 from protected_routes import router as protected_router
+from report_routes import router as report_router
 from src.triage.routes import router as triage_router
 
 app = FastAPI(
@@ -24,6 +25,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(protected_router)
+app.include_router(report_router)
 app.include_router(triage_router)
 
 

@@ -81,7 +81,8 @@ Requirements: Python, Ollama, and the `gemma3:1b` model.
 
 ```bash
 ollama pull gemma3:1b
-pip install -r requirements.txt
+./venv/bin/python3 -m pip install -r requirements.txt
+./venv/bin/python3 -m playwright install chromium
 ```
 
 Start the API:
@@ -206,3 +207,42 @@ These figures exclude electricity, hardware, maintenance, and infrastructure cos
 - Runtime quarantine logs are excluded from Git.
 - Ticket text is treated as untrusted input.
 - Model output is validated before being returned.
+
+## BE-08: PDF Report Generator
+
+A PDF reporting pipeline built with Python, SQLite, FastAPI, and Playwright.
+
+### Features
+- SQLite database seeding from bookstore data.
+- SQL aggregation and analytics.
+- Two-page PDF generation using Playwright and Chromium.
+- PDF artifact storage and report metadata registry.
+- Daily report reuse and forced regeneration.
+
+### API endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/reports/generate` | Generate a PDF report |
+| GET | `/reports/latest` | Get latest report metadata |
+| GET | `/reports/{report_id}/download` | Download a PDF report |
+
+Use `?force=true` to regenerate a report on the same day.
+
+### Setup
+
+```bash
+./venv/bin/python3 -m pip install -r requirements.txt
+./venv/bin/python3 -m playwright install chromium
+./venv/bin/python3 pdf-report-generator/seed_db.py
+./venv/bin/python3 -m uvicorn main:app --reload --port 8000
+```
+
+### Implementation files
+- `pdf-report-generator/seed_db.py`
+- `pdf-report-generator/queries.sql`
+- `pdf-report-generator/test_queries.py`
+- `pdf-report-generator/generate_report.py`
+- `report_routes.py`
+
+Generated databases and PDF artifacts are excluded from Git.
